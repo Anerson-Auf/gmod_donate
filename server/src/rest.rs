@@ -8,6 +8,7 @@ use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 use std::collections::HashSet;
 use std::sync::OnceLock;
+use tokio::net::TcpListener;
 
 use crate::rest_handlers;
 use crate::tcp::TcpServer;
@@ -110,11 +111,11 @@ impl RestServer {
 
         let addr = format!("{}:{}", host, port).parse::<SocketAddr>()?;
         info!("Starting HTTP API server on {}", addr);
-        let server = axum_server::bind(addr)
-            .serve(router.into_make_service());
+        let listener = TcpListener::bind(&addr).await
+            .with_context(|| format!("Failed to bind HTTP server to {}", addr))?;
+        let _server = axum::serve(listener, router.into_make_service())
+            .await?;
         info!("HTTP server bound to {}, starting to serve...", addr);
-        server.await
-            .context("HTTP server error")?;
-        Ok(Self {})
+        Ok(Self {  })
     }
 }
