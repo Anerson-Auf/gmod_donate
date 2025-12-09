@@ -73,6 +73,7 @@ curl --proto '=https' --tlsv1.2 https://sh.rustup.rs -sSf | sh # 1
 # source $"($nu.home-path)/.cargo/env.nu"  # For nushell
 git clone https://github.com/Anerson-Auf/gmod_donate
 cd gmod_donate
+chmod 777 ./deploy_server.sh
 # Можете воспользоваться deploy_server.sh от этой точки, выполнит все дальнейшие действия для деплоя сервера.
 # От этой строчки идёт принцип сборки модулей
 cargo build --release -p gmod_tcp_server
