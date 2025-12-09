@@ -60,6 +60,53 @@ cargo run --release
 ## HTTPS
 Работает с помощью nginx.
 
+## **Быстрый** старт на linux
+
+Server надо деплойнуть на машине.
+
+```bash
+sudo apt update -y && sudo apt upgrade -y
+sudo apt install build-essential
+curl --proto '=https' --tlsv1.2 https://sh.rustup.rs -sSf | sh # 1
+git clone https://github.com/Anerson-Auf/gmod_donate
+cd gmod_donate
+# Можете воспользоваться deploy_server.sh от этой точки, выполнит все дальнейшие действия для деплоя сервера.
+# От этой строчки идёт принцип сборки модулей
+cargo build --release -p gmod_tcp_server
+mkdir ../server && mv target/release/gmod_tcp_server ../server/ && cd ../server
+nano .env
+```
+Внутрь .env
+```bash
+HOST=0.0.0.0
+PORT=25565
+API_HOST=0.0.0.0
+API_PORT=9060
+ALLOWED_ORIGINS=*
+API_PASSWORDS=test
+```
+Далее можно запускать, сервер работает на http://127.0.0.1:9060
+
+`./gmod_tcp_server`
+
+### gmod_tcp_app
+По схожему принципу собрать 
+.env рядом
+```bash
+API_URL=http://127.0.0.1:9060
+API_PASSWORD=test
+```
+
+### gmod_tcp_client
+В нынешнем формате для Garry's Mod требуется создать host.txt, uuid.txt.
+Разместить их в ./common/GarrysMod/data/gmod_tcp
+
+host:
+`PUBLIC_IP:25565`
+uuid:
+`local-test # Любой на ваш выбор`
+
+
 ## Сборка
 
 ```bash
@@ -67,12 +114,12 @@ cargo run --release
 cargo build --release
 
 # Только сервер
-cd server && cargo build --release
+cd server && cargo build --release # или cargo build --release -p  gmod_tcp_server
 
 # Только клиент
-cd client && cargo build --release
+cd client && cargo build --release # или cargo build --release -p gmod_tcp_client
 
 # Только приложение
-cd client_app && cargo build --release
+cd client_app && cargo build --release # или cargo build --release -p gmod_tcp_app
 ```
 

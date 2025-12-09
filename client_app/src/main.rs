@@ -8,7 +8,7 @@ use tracing::error;
 fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
     let async_runtime = tokio::runtime::Runtime::new()?;
-    //let handle = async_runtime.handle().clone();
+    //let handle = async_runtime.handle().clone(); 
     let result = App::run_native(async_runtime);
     
     if let Err(e) = result {

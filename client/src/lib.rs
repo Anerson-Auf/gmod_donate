@@ -120,7 +120,7 @@ unsafe extern "C-unwind" fn poll_now(lua: State) -> i32 {
 #[gmod13_open]
 fn gmod13_open(state: State) -> i32 {
     println!("Module start loading!");
-    
+
     unsafe {
         state.new_table();
         state.set_global(CString::new("GModTCPMessages").unwrap().as_ptr());

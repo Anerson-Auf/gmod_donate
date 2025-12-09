@@ -45,7 +45,7 @@ impl TcpClient {
         let host_dir = Path::new("data/gmod_tcp");
         if let Err(e) = fs::create_dir_all(&host_dir) {
             eprintln!("Failed to create directory {:?}: {}", host_dir, e);
-        }
+        } 
         let path = host_dir.join("host.txt");
         if path.exists() {
             let host_and_port = fs::read_to_string(&path)?.trim().to_string();

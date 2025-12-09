@@ -63,7 +63,6 @@ impl RestServer {
         let host = std::env::var("API_HOST")?;
         let port = std::env::var("API_PORT")?;
         let allowed_origins = std::env::var("ALLOWED_ORIGINS")?;
-
         let cors = CorsLayer::new()
             .allow_origin(allowed_origins.parse::<HeaderValue>().unwrap())
             .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
@@ -85,7 +84,7 @@ impl RestServer {
             .route("/api/donates", post(rest_handlers::create_donate))
             .route("/api/donates/{donate_id}", delete(rest_handlers::delete_donate))
             .route("/api/donates/{donate_id}", put(rest_handlers::update_donate))
-            .layer(
+            .layer( 
                 TraceLayer::new_for_http()
                     .on_request(|request: &axum::http::Request<_>, _span: &tracing::Span| {
                         info!("TraceLayer: received request {} {}", request.method(), request.uri());

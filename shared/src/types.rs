@@ -25,7 +25,7 @@ pub struct Message {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Player {
     pub name: String,
-    pub steam_id: String,
+    pub steam_id: String, 
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
