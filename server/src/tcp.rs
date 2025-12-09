@@ -4,7 +4,6 @@ use anyhow::Result;
 use chrono::Utc;
 use tokio::net::TcpStream;
 use std::sync::Arc;
-use std::thread::sleep;
 use std::time::Duration;
 use tracing::{info, error};
 
@@ -34,7 +33,7 @@ impl TcpServer {
                     error!("Error clearing delivered messages: {}", e);
                 };
                 info!("Cleared delivered messages");
-                sleep(Duration::from_mins(60));
+                tokio::time::sleep(Duration::from_secs(60 * 60)).await;
             }
         });
         loop {
