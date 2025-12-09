@@ -7,10 +7,13 @@ use std::sync::Arc;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 use std::collections::HashSet;
+use std::sync::OnceLock;
 
 use crate::rest_handlers;
 use crate::tcp::TcpServer;
 use tracing::{info, warn};
+
+static PASSWORDS_CACHE: OnceLock<HashSet<String>> = OnceLock::new();
 
 pub struct RestServer {
 }
@@ -25,7 +28,7 @@ impl RestServer {
         let uri = req.uri().clone();
         info!("Incoming request: {} {}", method, uri);
         
-        let passwords = Self::load_passwords();
+        let passwords = Self::get_passwords();
         if passwords.is_empty() {
             info!("Request {} {} processed (no password protection)", method, uri);
             return Ok(next.run(req).await);
@@ -48,14 +51,20 @@ impl RestServer {
         }
     }
 
+    fn get_passwords() -> &'static HashSet<String> {
+        PASSWORDS_CACHE.get_or_init(|| {
+            dotenvy::dotenv().ok();
+            std::env::var("API_PASSWORDS")
+                .unwrap_or_default()
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect()
+        })
+    }
+
     fn load_passwords() -> HashSet<String> {
-        dotenvy::dotenv().ok();
-        std::env::var("API_PASSWORDS")
-            .unwrap_or_default()
-            .split(',')
-            .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty())
-            .collect()
+        Self::get_passwords().clone()
     }
 
     pub async fn new(tcp_server: Arc<TcpServer>) -> Result<Self> {
@@ -77,6 +86,7 @@ impl RestServer {
         }
 
         let router = Router::new()
+            .route("/", get(|| async { (StatusCode::NOT_FOUND, "Not Found") }))
             .route("/ping", get(|| async { "pong" }))
             .route("/api/clients", get(rest_handlers::get_clients))
             .route("/api/messages/{client_uuid}", get(rest_handlers::get_messages))
@@ -84,6 +94,7 @@ impl RestServer {
             .route("/api/donates", post(rest_handlers::create_donate))
             .route("/api/donates/{donate_id}", delete(rest_handlers::delete_donate))
             .route("/api/donates/{donate_id}", put(rest_handlers::update_donate))
+            .fallback(|| async { (StatusCode::NOT_FOUND, "Not Found") })
             .layer( 
                 TraceLayer::new_for_http()
                     .on_request(|request: &axum::http::Request<_>, _span: &tracing::Span| {
