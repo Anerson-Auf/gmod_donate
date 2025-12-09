@@ -17,3 +17,6 @@ API_PORT=9060
 ALLOWED_ORIGINS=*
 API_PASSWORDS=test
 EOF
+
+echo "Server deployed successfully. Type 'cd ../server' to open server dir."
+echo "There's a .env file in the server dir. Edit it to your needs."
