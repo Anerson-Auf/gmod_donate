@@ -1,0 +1,13 @@
+/target
+*/.env
+
+*.db
+*.pem
+*.key
+uuid.txt
+
+.cargo
+.vscode
+*.pdb
+*.dll
+*.exe
