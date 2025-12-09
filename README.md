@@ -22,11 +22,6 @@ PORT=25565
 API_HOST=0.0.0.0
 API_PORT=8080
 
-# HTTPS (опционально, если указаны - сервер запустится с HTTPS)
-SSL_CERT_PATH=/path/to/cert.pem
-SSL_KEY_PATH=/path/to/key.pem
-
-
 # CORS
 ALLOWED_ORIGINS=*
 
@@ -61,6 +56,9 @@ cargo run --release
 
 - `GModTCPGetMessages()` - получить сообщения из очереди (возвращает таблицу или nil)
 - `GModTCPPollNow()` - принудительно запросить сообщения с сервера
+
+## HTTPS
+Работает с помощью nginx.
 
 ## Сборка
 
