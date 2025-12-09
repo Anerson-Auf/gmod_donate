@@ -69,6 +69,7 @@ sudo apt update -y && sudo apt upgrade -y
 sudo apt install build-essential
 curl --proto '=https' --tlsv1.2 https://sh.rustup.rs -sSf | sh # 1
 . "$HOME/.cargo/env" # For sh/bash/zsh/ash/dash/pdksh
+rustup default nightly
 # source "$HOME/.cargo/env.fish"  # For fish
 # source $"($nu.home-path)/.cargo/env.nu"  # For nushell
 git clone https://github.com/Anerson-Auf/gmod_donate
