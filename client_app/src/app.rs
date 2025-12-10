@@ -27,6 +27,10 @@ pub struct App {
     #[serde(skip)]
     pub donates_rx: crossbeam_channel::Receiver<Vec<Donate>>,
     #[serde(skip)]
+    pub login_status_tx: crossbeam_channel::Sender<bool>,
+    #[serde(skip)]
+    pub login_status_rx: crossbeam_channel::Receiver<bool>,
+    #[serde(skip)]
     pub shutdown_tx: Option<broadcast::Sender<()>>,
     #[serde(skip)]
     pub editing_donate: Option<Donate>,
@@ -40,6 +44,8 @@ pub struct App {
     pub history_filter_id: String,
     #[serde(skip)]
     pub history_filter_value: String,
+    #[serde(skip)]
+    pub logged: bool,
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Clone, Copy, PartialEq)]
@@ -70,6 +76,7 @@ impl Default for App {
             .unwrap_or_default();
         let (clients_tx, clients_rx) = crossbeam_channel::bounded(100);
         let (donates_tx, donates_rx) = crossbeam_channel::bounded(100);
+        let (login_status_tx, login_status_rx) = crossbeam_channel::bounded(10);
         Self {
             selected_tab: Tab::Create,
             clients: Vec::new(),
@@ -82,6 +89,8 @@ impl Default for App {
             clients_rx,
             donates_tx,
             donates_rx,
+            login_status_tx,
+            login_status_rx,
             shutdown_tx: None,
             editing_donate: None,
             history_filter_steam_id: String::new(),
@@ -89,17 +98,25 @@ impl Default for App {
             history_filter_type: String::new(),
             history_filter_id: String::new(),
             history_filter_value: String::new(),
+            logged: false,
         }
     }
 }
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        if let Ok(clients) = self.clients_rx.try_recv() {
-            self.clients = clients;
-        }
-        if let Ok(donates) = self.donates_rx.try_recv() {
-            self.donates = donates;
+        if self.logged {
+            if let Ok(clients) = self.clients_rx.try_recv() {
+                self.clients = clients;
+            }
+            if let Ok(donates) = self.donates_rx.try_recv() {
+                self.donates = donates;
+            }
+        } else {
+            if let Ok(logged) = self.login_status_rx.try_recv() {
+                println!("logged: {:?}", logged);
+                self.logged = logged;
+            }
         }
         self.draw(ctx);
     }

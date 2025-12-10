@@ -36,16 +36,21 @@ impl TcpServer {
                 tokio::time::sleep(Duration::from_secs(60 * 60)).await;
             }
         });
-        loop {
-            let self_clone = Arc::clone(&self);
-            let (socket, addr) = self_clone.listener.accept().await?;
-            info!("New TCP connection from {}", addr);
-            tokio::spawn(async move {
-                if let Err(e) = self_clone.handle_socket_messsages(socket).await {
-                    error!("Error handling socket messages from {}: {}", addr, e);
-                };
-            });
-        }
+        let another_one_clone = Arc::clone(&self);
+        tokio::spawn(async move {
+            loop {
+                let (socket, addr) = another_one_clone.listener.accept().await.unwrap();
+                info!("New TCP connection from {}", addr);
+                let server_clone = Arc::clone(&another_one_clone);
+                tokio::spawn(async move {
+                    if let Err(e) = server_clone.handle_socket_messsages(socket).await {
+                        error!("Error handling socket messages from {}: {}", addr, e);
+                    };
+                });
+            }
+        });
+        tokio::signal::ctrl_c().await?;
+        Ok(())
     }
 
     async fn read_message(socket: &mut TcpStream) -> Result<Vec<u8>> {

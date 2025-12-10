@@ -1,7 +1,7 @@
 use anyhow::Result;
 use tokio::net::TcpStream;
 use tokio::io::{AsyncWriteExt, AsyncReadExt};
-use tokio::time::{sleep, Duration};
+use tokio::time::{Duration, timeout};
 use gmod_tcp_shared::types::{ClientRequest, Message, ServerResponse};
 use std::path::Path;
 use std::sync::Arc;
@@ -95,8 +95,20 @@ impl TcpClient {
     pub async fn connect(&self) -> Result<TcpStream> {
         let addr = format!("{}:{}", self.server_host, self.server_port);
         println!("Connecting to server at {}", addr);
-        let stream = TcpStream::connect(addr).await?;
-        Ok(stream)
+        let connect_future = TcpStream::connect(&addr);
+        match tokio::time::timeout(Duration::from_secs(10), connect_future).await {
+            Ok(Ok(stream)) => {
+                println!("Successfully connected to {}", addr);
+                Ok(stream)
+            }
+            Ok(Err(e)) => {
+                let os_error = e.raw_os_error();
+                Err(anyhow::anyhow!("Connection failed to {}: {} (os error: {:?})", addr, e, os_error))
+            }
+            Err(_) => {
+                Err(anyhow::anyhow!("Connection timeout after 10 seconds to {}", addr))
+            }
+        }
     }
 
     async fn read_message(socket: &mut TcpStream) -> Result<Vec<u8>> {
@@ -149,7 +161,7 @@ impl TcpClient {
                     }
                 }
                 println!("Waiting 10 minutes until next poll");
-                sleep(Duration::from_secs(600)).await;
+                tokio::time::sleep(Duration::from_secs(600)).await;
             }
         });
         Ok(())

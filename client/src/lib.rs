@@ -145,21 +145,29 @@ fn gmod13_open(state: State) -> i32 {
     println!("Client UUID: {}", client.client_uuid);
     println!("Registering client on server");
     
-    if let Err(e) = rt.block_on(client.register()) {
-        eprintln!("Failed to register client: {}", e);
-        return 1;
-    }
-    
-    println!("Client registered successfully");
-    println!("Starting polling loop (every 10 minutes)");
-    
     CLIENT.set(Arc::clone(&client)).expect("Failed to set client");
     
+    let client_for_reg = Arc::clone(&client);
+    rt.spawn(async move {
+        match client_for_reg.register().await {
+            Ok(_) => {
+                println!("Client registered successfully");
+            }
+            Err(e) => {
+                eprintln!("Failed to register client: {}", e);
+            }
+        }
+    });
+    
+    println!("Starting polling loop (every 10 minutes)");
+    
     let message_queue = get_message_queue();
-    if let Err(e) = rt.block_on(client.listen(message_queue)) {
-        eprintln!("Failed to start listening: {}", e);
-        return 1;
-    }
+    let client_for_listen = Arc::clone(&client);
+    rt.spawn(async move {
+        if let Err(e) = client_for_listen.listen(message_queue).await {
+            eprintln!("Failed to start listening: {}", e);
+        }
+    });
     
     println!("Module loaded successfully!");
     0

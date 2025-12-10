@@ -1,15 +1,21 @@
 use gmod_tcp_shared::types::{CreateRequest, Donate, Player, ClientConnection};
 use egui::{Color32, CornerRadius, Stroke, Vec2};
 use egui::RichText as rich;
-use reqwest::Client;
+use reqwest::{Client, Response};
 use anyhow::Result;
 use tracing::{info, error};
 use chrono::{FixedOffset, Utc};
+use serde::{Serialize, Deserialize};
 
 use crate::app::{App, Tab};
 
 fn moscow_timezone() -> FixedOffset {
     FixedOffset::east_opt(3 * 3600).unwrap()
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct LoginResponse {
+    pub status: u32,
 }
 
 impl App {
@@ -33,13 +39,8 @@ impl App {
                 ui.horizontal(|ui| {
                     ui.vertical_centered(|ui| {
                         ui.add_space(10.0);
-                        ui.heading(rich::new("GMod Donate Manager").size(24.0).color(Color32::from_rgb(255, 0, 255)));
+                        ui.heading(rich::new("Yufu Donate Manager").size(24.0).color(Color32::from_rgb(255, 0, 255)));
                         ui.add_space(5.0);
-                    });
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        ui.label(rich::new("API Password:").size(12.0).color(Color32::from_rgb(200, 200, 210)));
-                        ui.add_space(5.0);
-                        ui.text_edit_singleline(&mut self.api_password);
                     });
                 });
             });
@@ -48,6 +49,9 @@ impl App {
             .resizable(true)
             .default_width(250.0)
             .show(ctx, |ui| {
+                if !self.logged {
+                    return;
+                }
                 ui.vertical_centered(|ui| {
                     ui.add_space(20.0);
                     ui.heading(rich::new("Navigation").size(18.0).color(Color32::from_rgb(255, 0, 255)));
@@ -77,6 +81,10 @@ impl App {
         egui::CentralPanel::default()
             .show(ctx, |ui| {
                 ui.add_space(20.0);
+                if !self.logged {
+                    self.draw_login(ui);
+                    return;
+                }
                 match self.selected_tab {
                     Tab::Create => self.draw_create_donate(ui),
                     Tab::Clients => self.draw_clients(ui),
@@ -435,6 +443,33 @@ impl App {
         }
     }
 
+    fn draw_login(&mut self, ui: &mut egui::Ui) {
+        ui.vertical_centered(|ui| {
+            ui.heading(rich::new("Login").size(22.0).color(Color32::from_rgb(255, 0, 255)));
+        });
+        ui.add_space(20.0);
+        ui.horizontal_centered(|ui| {
+            egui::Frame::group(ui.style())
+                .fill(Color32::from_rgb(25, 25, 30))
+                .stroke(Stroke::new(1.0, Color32::from_rgb(180, 0, 180)))
+                .inner_margin(20.0)
+                .show(ui, |ui| {
+                    ui.set_max_width(600.0);
+                    ui.vertical_centered(|ui| {
+                        ui.add_space(10.0);
+                        ui.label(rich::new("API URL").size(14.0).color(Color32::from_rgb(200, 200, 210)));
+                        ui.text_edit_singleline(&mut self.api_url);
+                        ui.label(rich::new("API Password").size(14.0).color(Color32::from_rgb(200, 200, 210)));
+                        ui.text_edit_singleline(&mut self.api_password);
+                        ui.add_space(20.0);
+                        if ui.button(rich::new("Login").size(16.0).color(Color32::WHITE)).clicked() {
+                            let _ = self.request_clients();
+                        }
+                    });
+                });
+        });
+    }
+
     fn create_donate(&mut self) -> Result<()> {
         
         let form = self.form.clone();
@@ -608,9 +643,11 @@ impl App {
         });
     }
     
+    
    pub fn request_clients(&self) -> Result<()> {
         let api_url = self.api_url.clone();
-        let tx = self.clients_tx.clone();
+        let clients_tx = self.clients_tx.clone();
+        let login_status_tx = self.login_status_tx.clone();
         let api_password = self.api_password.clone();
         info!("Fetching clients from {}", api_url);
         self.async_runtime.as_ref().unwrap().spawn(async move {
@@ -620,17 +657,25 @@ impl App {
                 .send().await
             {
                 Ok(response) => {
+                    let status_code = response.headers().clone().get("content-length").unwrap().to_str().unwrap().parse::<u32>().unwrap();
                     if let Ok(clients) = response.json::<Vec<ClientConnection>>().await {
                         info!("Loaded {} clients", clients.len());
-                        if let Err(e) = tx.send(clients) {
+                        if let Err(e) = clients_tx.send(clients) {
                             error!("Error sending clients in crossbeam channel: {}", e);
                         }
                     } else {
                         error!("Failed to parse clients response");
                     }
+                    println!("status_code: {:?}", status_code);
+                    if let Err(e) = login_status_tx.send(status_code == 150) {
+                        error!("Error sending login status: {}", e);
+                    }
                 },
                 Err(e) => {
                     error!("Failed to fetch clients: {}", e);
+                    if let Err(e) = login_status_tx.send(false) {
+                        error!("Error sending login status: {}", e);
+                    }
                 }
             }
         });
