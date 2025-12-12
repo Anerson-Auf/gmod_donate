@@ -6,6 +6,8 @@ use tokio::net::TcpStream;
 use std::sync::Arc;
 use std::time::Duration;
 use tracing::{info, error};
+#[cfg(unix)]
+use tokio::signal::unix::{signal, SignalKind};
 
 use gmod_tcp_shared::types::{Message, Donate, ClientRequest, ServerResponse};
 
@@ -39,17 +41,42 @@ impl TcpServer {
         let another_one_clone = Arc::clone(&self);
         tokio::spawn(async move {
             loop {
-                let (socket, addr) = another_one_clone.listener.accept().await.unwrap();
-                info!("New TCP connection from {}", addr);
-                let server_clone = Arc::clone(&another_one_clone);
-                tokio::spawn(async move {
-                    if let Err(e) = server_clone.handle_socket_messsages(socket).await {
-                        error!("Error handling socket messages from {}: {}", addr, e);
-                    };
-                });
+                match another_one_clone.listener.accept().await {
+                    Ok((socket, addr)) => {
+                        info!("New TCP connection from {}", addr);
+                        let server_clone = Arc::clone(&another_one_clone);
+                        tokio::spawn(async move {
+                            if let Err(e) = server_clone.handle_socket_messsages(socket).await {
+                                error!("Error handling socket messages from {}: {}", addr, e);
+                            };
+                        });
+                    }
+                    Err(e) => {
+                        error!("Failed to accept connection: {}", e);
+                        tokio::time::sleep(Duration::from_secs(1)).await;
+                    }
+                }
             }
         });
-        tokio::signal::ctrl_c().await?;
+        
+        #[cfg(unix)]
+        {
+            let mut sigterm = signal(SignalKind::terminate())?;
+            let mut sigint = signal(SignalKind::interrupt())?;
+            tokio::select! {
+                _ = sigterm.recv() => {
+                    info!("Received SIGTERM, shutting down gracefully");
+                }
+                _ = sigint.recv() => {
+                    info!("Received SIGINT, shutting down gracefully");
+                }
+            }
+        }
+        #[cfg(not(unix))]
+        {
+            tokio::signal::ctrl_c().await?;
+        }
+        
         Ok(())
     }
 
