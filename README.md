@@ -38,10 +38,9 @@ API_PASSWORDS=your_password_here
 ```
 
 ### Запуск
-
+**Docker Compose:**
 ```bash
-cd server
-cargo run --release
+docker compose up -d --build
 ```
 
 ## Клиент для Garry's Mod
