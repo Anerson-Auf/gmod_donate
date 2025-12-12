@@ -26,7 +26,7 @@ RUN cargo build --release --bin gmod_tcp_server
 FROM debian:bookworm-slim
 
 RUN apt-get update && \
-    apt-get install -y ca-certificates gosu && \
+    apt-get install -y ca-certificates gosu libc6 && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
