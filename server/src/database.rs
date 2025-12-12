@@ -7,9 +7,12 @@ use gmod_tcp_shared::types::{Message, Donate, Player, ClientConnection};
 use serde_json;
 use tracing::info;
 
+const DB_PATH: &str = "data/server.db";
+
 impl TcpServer {
     pub async fn init_database(&self) -> Result<()> {
-        let db = Connection::open("server.db")?;
+        std::fs::create_dir_all("data")?;
+        let db = Connection::open(DB_PATH)?;
         db.execute("
             CREATE TABLE IF NOT EXISTS clients (
             uuid TEXT PRIMARY KEY,
@@ -54,7 +57,7 @@ impl TcpServer {
     pub async fn register_client(&self, client_uuid: String) -> Result<()> {
         let client_uuid_clone = client_uuid.clone();
         let result = tokio::task::spawn_blocking(move || -> Result<()> {
-            let db = Connection::open("server.db")?;
+            let db = Connection::open(DB_PATH)?;
             db.execute("
                 INSERT INTO clients (uuid, server_name, registered_at, last_seen) VALUES (?, ?, ?, ?);
             ", params![&client_uuid_clone, &client_uuid_clone, Utc::now().to_rfc3339(), Utc::now().to_rfc3339()])?;
@@ -68,7 +71,7 @@ impl TcpServer {
     pub async fn proof_client(&self, client_uuid: String) -> Result<()> {
         let client_uuid_clone = client_uuid.clone();
         let result = tokio::task::spawn_blocking(move || -> Result<i32> {
-            let db = Connection::open("server.db")?;
+            let db = Connection::open(DB_PATH)?;
             let count: i32 = db.query_row("SELECT COUNT(*) FROM clients WHERE uuid = ?", [client_uuid_clone], |row| row.get(0))?;
             Ok(count)
         }).await??;
@@ -81,7 +84,7 @@ impl TcpServer {
     pub async fn update_last_seen(&self, client_uuid: String) -> Result<()> {
         let client_uuid_clone = client_uuid.clone();
         tokio::task::spawn_blocking(move || -> Result<()> {
-            let db = Connection::open("server.db")?;
+            let db = Connection::open(DB_PATH)?;
             db.execute("UPDATE clients SET last_seen = ? WHERE uuid = ?", params![Utc::now().to_rfc3339(), client_uuid_clone])?;
             Ok(())
         }).await??;
@@ -94,7 +97,7 @@ impl TcpServer {
         let client_uuid_clone = message.client_uuid.clone();
         let message_data_clone = message.message_data.clone();
         let message_id = tokio::task::spawn_blocking(move || -> Result<u64> {
-            let db = Connection::open("server.db")?;
+            let db = Connection::open(DB_PATH)?;
             db.execute("INSERT INTO messages (client_uuid, message_type, message_data, created_at, status) VALUES (?, ?, ?, ?, ?);", params![message_clone.client_uuid, message_clone.message_type, serde_json::to_string(&message_clone.message_data)?, message_clone.created_at.to_rfc3339(), message_clone.status])?;
             let id = db.last_insert_rowid() as u64;
             Ok(id)
@@ -110,7 +113,7 @@ impl TcpServer {
             
             let message_id_clone = message_id;
             tokio::task::spawn_blocking(move || -> Result<()> {
-                let db = Connection::open("server.db")?;
+                let db = Connection::open(DB_PATH)?;
                 db.execute(
                     "UPDATE messages SET message_data = ? WHERE id = ?",
                     params![serde_json::to_string(&updated_message_data)?, message_id_clone]
@@ -124,7 +127,7 @@ impl TcpServer {
         let donate_clone = donate.clone();
         let client_uuid_clone = client_uuid.clone();
         let donate_id = tokio::task::spawn_blocking(move || -> Result<u64> {
-            let db = Connection::open("server.db")?;
+            let db = Connection::open(DB_PATH)?;
             db.execute("INSERT INTO donates (message_id, client_uuid, account_name, account_steam_id, who_name, who_steam_id, donate_type, value, faction, date, time, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);", params![message_id, client_uuid_clone, donate_clone.account.name, donate_clone.account.steam_id, donate_clone.who.name, donate_clone.who.steam_id, donate_clone.donate_type, donate_clone.value, donate_clone.faction, donate_clone.date.to_rfc3339(), donate_clone.time.to_rfc3339(), Utc::now().to_rfc3339()])?;
             let id = db.last_insert_rowid() as u64;
             Ok(id)
@@ -134,7 +137,7 @@ impl TcpServer {
     pub async fn get_pending_messages(&self, client_uuid: String) -> Result<Vec<Message>> {
         let client_uuid_clone = client_uuid.clone();
         let messages = tokio::task::spawn_blocking(move || -> Result<Vec<Message>> {
-            let db = Connection::open("server.db")?;
+            let db = Connection::open(DB_PATH)?;
             let mut stmt = db.prepare("SELECT id, client_uuid, message_type, message_data, created_at, delivered_at, status FROM messages WHERE client_uuid = ? AND status = 'pending'")?;
             let messages: Result<Vec<Message>, _> = stmt.query_map([client_uuid_clone], |row| {
                 let created_at_str: String = row.get(4)?;
@@ -157,7 +160,7 @@ impl TcpServer {
         let ids_clone = ids.clone();
         let now = Utc::now().to_rfc3339();
         tokio::task::spawn_blocking(move || -> Result<()> {
-            let db = Connection::open("server.db")?;
+            let db = Connection::open(DB_PATH)?;
             if ids_clone.is_empty() {
                 return Ok(());
             }
@@ -170,7 +173,7 @@ impl TcpServer {
     }
     pub async fn get_donates(&self) -> Result<Vec<Donate>> {
         let donates = tokio::task::spawn_blocking(move || -> Result<Vec<Donate>> {
-            let db = Connection::open("server.db")?;
+            let db = Connection::open(DB_PATH)?;
             let mut stmt = db.prepare("SELECT id, client_uuid, account_name, account_steam_id, date, faction, time, donate_type, value, who_name, who_steam_id FROM donates")?;
             let donates: Result<Vec<Donate>, _> = stmt.query_map([], |row| {
                 let date_str: String = row.get(4)?;
@@ -200,7 +203,7 @@ impl TcpServer {
     
     pub async fn get_donate_by_id(&self, donate_id: u64) -> Result<Option<(Donate, String)>> {
         let result = tokio::task::spawn_blocking(move || -> Result<Option<(Donate, String)>> {
-            let db = Connection::open("server.db")?;
+            let db = Connection::open(DB_PATH)?;
             let mut stmt = db.prepare("SELECT id, account_name, account_steam_id, date, faction, time, donate_type, value, who_name, who_steam_id, client_uuid FROM donates WHERE id = ?")?;
             match stmt.query_row(params![donate_id], |row| {
                 let date_str: String = row.get(3)?;
@@ -240,7 +243,7 @@ impl TcpServer {
         
         if let Some((_, _)) = &donate_info {
             tokio::task::spawn_blocking(move || -> Result<()> {
-                let db = Connection::open("server.db")?;
+                let db = Connection::open(DB_PATH)?;
                 db.execute("DELETE FROM donates WHERE id = ?", params![donate_id])?;
                 Ok(())
             }).await??;
@@ -255,7 +258,7 @@ impl TcpServer {
         
         let donate_clone = donate.clone();
         tokio::task::spawn_blocking(move || -> Result<()> {
-            let db = Connection::open("server.db")?;
+            let db = Connection::open(DB_PATH)?;
             db.execute(
                 "UPDATE donates SET account_name = ?, account_steam_id = ?, who_name = ?, who_steam_id = ?, donate_type = ?, value = ?, faction = ?, date = ?, time = ? WHERE id = ?",
                 params![
@@ -278,7 +281,7 @@ impl TcpServer {
     
     pub async fn get_clients(&self) -> Result<Vec<ClientConnection>> {
         let clients = tokio::task::spawn_blocking(move || -> Result<Vec<ClientConnection>> {
-            let db = Connection::open("server.db")?;
+            let db = Connection::open(DB_PATH)?;
             let mut stmt = db.prepare("SELECT uuid, server_name, registered_at, last_seen FROM clients")?;
             let clients: Result<Vec<ClientConnection>, _> = stmt.query_map([], |row| {
                 let registered_at_str: String = row.get(2)?;
@@ -296,7 +299,7 @@ impl TcpServer {
     }
     pub async fn clear_delivered_messages(&self) -> Result<()> {
         tokio::task::spawn_blocking(move || -> Result<()> {
-            let db = Connection::open("server.db")?;
+            let db = Connection::open(DB_PATH)?;
             let cutoff_time = Utc::now().to_rfc3339();
 
             db.execute(

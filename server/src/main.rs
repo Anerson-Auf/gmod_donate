@@ -21,15 +21,8 @@ async fn main() -> Result<()> {
     
     let tcp_server_clone = tcp_server.clone();
     tokio::spawn(async move {
-        info!("Spawning REST server task...");
-        match RestServer::new(tcp_server_clone).await {
-            Ok(_) => {
-                info!("REST server exited normally");
-            },
-            Err(e) => {
-                error!("Failed to start HTTP API server: {}", e);
-                error!("Error details: {:?}", e);
-            }
+        if let Err(e) = RestServer::new(tcp_server_clone).await {
+            error!("REST server error: {}", e);
         }
     });
     

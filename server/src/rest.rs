@@ -70,9 +70,9 @@ impl RestServer {
 
     pub async fn new(tcp_server: Arc<TcpServer>) -> Result<Self> {
         dotenvy::dotenv().ok();
-        let host = std::env::var("API_HOST")?;
-        let port = std::env::var("API_PORT")?;
-        let allowed_origins = std::env::var("ALLOWED_ORIGINS")?;
+        let host = std::env::var("API_HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
+        let port = std::env::var("API_PORT").unwrap_or_else(|_| "9060".to_string());
+        let allowed_origins = std::env::var("ALLOWED_ORIGINS").unwrap_or_else(|_| "*".to_string());
         let cors = CorsLayer::new()
             .allow_origin(allowed_origins.parse::<HeaderValue>().unwrap())
             .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
