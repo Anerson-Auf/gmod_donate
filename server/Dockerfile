@@ -1,23 +1,6 @@
 FROM rust:latest AS builder
 
-RUN apt-get update -y && apt-get upgrade -y && apt-get install -y build-essential && apt-get clean
-
 WORKDIR /app
-
-COPY Cargo.toml Cargo.lock ./
-COPY shared/Cargo.toml ./shared/
-COPY server/Cargo.toml ./server/
-COPY client/Cargo.toml ./client/
-COPY client_app/Cargo.toml ./client_app/
-
-RUN mkdir -p server/src shared/src client/src client_app/src && \
-    echo "fn main() {}" > server/src/main.rs && \
-    echo "" > shared/src/lib.rs && \
-    echo "" > client/src/lib.rs && \
-    echo "fn main() {}" > client_app/src/main.rs
-
-RUN cargo build --release --bin gmod_tcp_server && \
-    rm -rf server/src shared/src client/src client_app/src
 
 COPY . .
 
