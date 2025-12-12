@@ -8,6 +8,8 @@ services:
     ports:
       - "9060:9060"
       - "25565:25565"
+    env_file:
+      - .env
     environment:
       - HOST=${HOST:-0.0.0.0}
       - PORT=${PORT:-25565}
