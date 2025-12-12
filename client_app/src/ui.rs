@@ -13,11 +13,6 @@ fn moscow_timezone() -> FixedOffset {
     FixedOffset::east_opt(3 * 3600).unwrap()
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct LoginResponse {
-    pub status: u32,
-}
-
 impl App {
     fn create_client_with_password(password: &str) -> Client {
         let mut headers = reqwest::header::HeaderMap::new();
