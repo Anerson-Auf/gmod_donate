@@ -6,8 +6,6 @@ use tokio::net::TcpStream;
 use std::sync::Arc;
 use std::time::Duration;
 use tracing::{info, error};
-#[cfg(unix)]
-use tokio::signal::unix::{signal, SignalKind};
 
 use gmod_tcp_shared::types::{Message, Donate, ClientRequest, ServerResponse};
 
@@ -59,25 +57,9 @@ impl TcpServer {
             }
         });
         
-        #[cfg(unix)]
-        {
-            let mut sigterm = signal(SignalKind::terminate())?;
-            let mut sigint = signal(SignalKind::interrupt())?;
-            tokio::select! {
-                _ = sigterm.recv() => {
-                    info!("Received SIGTERM, shutting down gracefully");
-                }
-                _ = sigint.recv() => {
-                    info!("Received SIGINT, shutting down gracefully");
-                }
-            }
+        loop {
+            tokio::time::sleep(Duration::from_secs(3600)).await;
         }
-        #[cfg(not(unix))]
-        {
-            tokio::signal::ctrl_c().await?;
-        }
-        
-        Ok(())
     }
 
     async fn read_message(socket: &mut TcpStream) -> Result<Vec<u8>> {
