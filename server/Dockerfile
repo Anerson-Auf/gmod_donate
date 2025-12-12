@@ -34,6 +34,7 @@ WORKDIR /app
 COPY --from=builder /app/target/release/gmod_tcp_server /app/gmod_tcp_server
 
 RUN useradd -m -u 1000 appuser && \
+    chmod +x /app/gmod_tcp_server && \
     chown -R appuser:appuser /app
 
 COPY server/docker-entrypoint.sh /usr/local/bin/

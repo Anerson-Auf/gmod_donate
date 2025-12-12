@@ -18,8 +18,8 @@ pub struct TcpServer {
 impl TcpServer {
     pub async fn new() -> Result<Self> {
         dotenvy::dotenv().ok();
-        let host = std::env::var("HOST")?;
-        let port = std::env::var("PORT")?;
+        let host = std::env::var("HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
+        let port = std::env::var("PORT").unwrap_or_else(|_| "25565".to_string());
         let addr = format!("{}:{}", host, port);
         let listener = TcpListener::bind(&addr).await.unwrap();
         info!("TCP server bound to {}", addr);
