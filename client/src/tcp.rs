@@ -1,11 +1,12 @@
 use anyhow::Result;
 use tokio::net::TcpStream;
-use tokio::io::{AsyncWriteExt, AsyncReadExt};
-use tokio::time::{Duration, timeout};
+use tokio::{
+    io::{AsyncWriteExt, AsyncReadExt},
+    time::Duration
+};
 use gmod_tcp_shared::types::{ClientRequest, Message, ServerResponse};
 use std::path::Path;
-use std::sync::Arc;
-use std::sync::Mutex;
+use std::sync::{Mutex, Arc};
 
 use uuid::Uuid;
 use std::fs;

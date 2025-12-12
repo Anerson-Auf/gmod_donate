@@ -1,11 +1,9 @@
 use gmod_tcp_shared::types::{CreateRequest, Donate, Player, ClientConnection};
-use egui::{Color32, CornerRadius, Stroke, Vec2};
-use egui::RichText as rich;
-use reqwest::{Client, Response};
+use egui::{Color32, CornerRadius, Stroke, Vec2, RichText as rich};
+use reqwest::Client;
 use anyhow::Result;
 use tracing::{info, error};
 use chrono::{FixedOffset, Utc};
-use serde::{Serialize, Deserialize};
 
 use crate::app::{App, Tab};
 
