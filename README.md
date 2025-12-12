@@ -41,6 +41,7 @@ API_PASSWORDS=your_password_here
 **Docker Compose:**
 ```bash
 docker compose up -d --build
+# Файл .env должен лежать рядом с docker-compose.yml
 ```
 
 ## Клиент для Garry's Mod
