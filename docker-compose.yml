@@ -16,8 +16,6 @@ services:
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}
       - API_PASSWORDS=${API_PASSWORDS:-}
       - RUST_LOG=${RUST_LOG:-info}
-    env_file:
-      - ./server/.env
     volumes:
       - ./server/data:/app/data
     networks:

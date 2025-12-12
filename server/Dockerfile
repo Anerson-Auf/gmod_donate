@@ -1,6 +1,6 @@
 FROM rust:latest AS builder
 
-RUN apt-get update -y && apt-get upgrade -y && apt install -y build-essential && apt-get clean
+RUN apt-get update -y && apt-get upgrade -y && apt-get install -y build-essential && apt-get clean
 
 WORKDIR /app
 
@@ -10,17 +10,14 @@ COPY server/Cargo.toml ./server/
 COPY client/Cargo.toml ./client/
 COPY client_app/Cargo.toml ./client_app/
 
-RUN mkdir -p server/src && \
+RUN mkdir -p server/src shared/src client/src client_app/src && \
     echo "fn main() {}" > server/src/main.rs && \
-    mkdir -p shared/src && \
     echo "" > shared/src/lib.rs && \
-    mkdir -p client/src && \
     echo "" > client/src/lib.rs && \
-    mkdir -p client_app/src && \
     echo "fn main() {}" > client_app/src/main.rs
 
-RUN cargo build --release --bin gmod_tcp_server
-RUN rm -rf server/src/main.rs shared/src/lib.rs client/src/lib.rs client_app/src/main.rs
+RUN cargo build --release --bin gmod_tcp_server && \
+    rm -rf server/src shared/src client/src client_app/src
 
 COPY . .
 
@@ -42,7 +39,7 @@ RUN useradd -m -u 1000 appuser && \
 COPY server/docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-ENTRYPOINT ["docker-entrypoint.sh"]
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 
 EXPOSE 9060 25565
 
